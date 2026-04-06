@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>.NET Upgrade Comparison Report</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #512bd4;
+            --primary-light: #7b5ee1;
+            --accent: #1ecbe1;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #273548;
+            --text: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 40%, #4c1d95 100%);
+            padding: 3rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+        .hero::after {
+            content: '';
+            position: absolute;
+            top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: radial-gradient(circle at 70% 30%, rgba(30, 203, 225, 0.08) 0%, transparent 50%);
+        }
+        .hero h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            position: relative; z-index: 1;
+        }
+        .hero h1 .accent { color: var(--accent); }
+        .hero p {
+            color: var(--text-muted);
+            font-size: 1.05rem;
+            position: relative; z-index: 1;
+        }
+        .hero .badge {
+            display: inline-block;
+            margin-top: 1rem;
+            padding: 0.4rem 1.2rem;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 999px;
+            color: var(--success);
+            font-weight: 600;
+            font-size: 0.95rem;
+            position: relative; z-index: 1;
+        }
+
+        .container { max-width: 1280px; margin: 0 auto; padding: 2rem 1.5rem; }
+
+        /* KPI Cards */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 2.5rem;
+        }
+        .kpi-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .kpi-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--primary-light);
+        }
+        .kpi-card .value {
+            font-size: 2.4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--accent), var(--primary-light));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .kpi-card .value.green {
+            background: linear-gradient(135deg, #10b981, #34d399);
+            -webkit-background-clip: text; background-clip: text;
+        }
+        .kpi-card .value.orange {
+            background: linear-gradient(135deg, #f59e0b, #fbbf24);
+            -webkit-background-clip: text; background-clip: text;
+        }
+        .kpi-card .label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            margin-top: 0.3rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        /* Section */
+        .section {
+            margin-bottom: 3rem;
+        }
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .section-title .dot {
+            width: 10px; height: 10px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: inline-block;
+        }
+
+        /* Chart containers */
+        .chart-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 900px) { .chart-grid { grid-template-columns: 1fr; } }
+
+        .chart-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+        .chart-card h3 {
+            font-size: 1rem;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .chart-card.full { grid-column: 1 / -1; }
+
+        /* Comparison cards */
+        .compare-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 1.5rem;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        @media (max-width: 768px) { .compare-grid { grid-template-columns: 1fr; } }
+        
+        .compare-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+        }
+        .compare-card.old { border-left: 4px solid var(--warning); }
+        .compare-card.new { border-left: 4px solid var(--success); }
+        .compare-card h3 { font-size: 1.2rem; margin-bottom: 1rem; }
+        .compare-card .stat { margin: 0.8rem 0; }
+        .compare-card .stat .num { font-size: 1.8rem; font-weight: 800; }
+        .compare-card .stat .lbl { color: var(--text-muted); font-size: 0.85rem; }
+        .compare-card.old .num { color: var(--warning); }
+        .compare-card.new .num { color: var(--success); }
+
+        .vs-badge {
+            width: 60px; height: 60px;
+            border-radius: 50%;
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 1.1rem;
+            color: var(--accent);
+        }
+        @media (max-width: 768px) { .vs-badge { margin: 0 auto; } }
+
+        /* Table */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+        th {
+            background: #1a2332;
+            padding: 0.8rem 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+            position: sticky; top: 0;
+        }
+        td {
+            padding: 0.7rem 1rem;
+            border-top: 1px solid var(--border);
+        }
+        tr:hover td { background: rgba(81, 43, 212, 0.06); }
+        .tag {
+            display: inline-block;
+            padding: 0.15rem 0.6rem;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+        .tag.green { background: rgba(16,185,129,0.15); color: #34d399; }
+        .tag.yellow { background: rgba(245,158,11,0.15); color: #fbbf24; }
+        .tag.red { background: rgba(239,68,68,0.15); color: #f87171; }
+        .tag.blue { background: rgba(30,203,225,0.15); color: #67e8f9; }
+
+        /* Conclusion */
+        .conclusion {
+            background: linear-gradient(135deg, rgba(81,43,212,0.12), rgba(30,203,225,0.08));
+            border: 1px solid rgba(81,43,212,0.3);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        .conclusion h2 { color: var(--accent); margin-bottom: 1rem; }
+        .conclusion ul { list-style: none; padding: 0; }
+        .conclusion li {
+            padding: 0.5rem 0;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+        .conclusion li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: var(--success);
+            font-weight: 700;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 0.8rem;
+        }
+
+        /* Animate on scroll */
+        .fade-in {
+            opacity: 0;
+            transform: translateY(20px);
+            transition: opacity 0.5s, transform 0.5s;
+        }
+        .fade-in.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="hero">
+        <h1>.NET Upgrade <span class="accent">Efficiency Report</span></h1>
+        <p>Copilot Tool-Assisted (.NET 10) vs. Manual Approach (.NET 8) — CIAM Project</p>
+        <div class="badge">5–7x Faster Per Repository</div>
+    </div>
+
+    <div class="container">
+        <!-- KPI Cards -->
+        <div class="kpi-grid fade-in">
+            <div class="kpi-card">
+                <div class="value">41</div>
+                <div class="label">Repositories Upgraded</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value green">~46 hrs</div>
+                <div class="label">Total Effort (.NET 10)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value orange">~140 hrs</div>
+                <div class="label">Est. Effort (.NET 8)</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value">67%</div>
+                <div class="label">Effort Reduction</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value green">12 min</div>
+                <div class="label">Avg Tool Time / Repo</div>
+            </div>
+            <div class="kpi-card">
+                <div class="value">18</div>
+                <div class="label">Repos with Vuln Fixes</div>
+            </div>
+        </div>
+
+        <!-- Side by Side Comparison -->
+        <div class="section fade-in">
+            <div class="section-title"><span class="dot"></span> Head-to-Head Comparison</div>
+            <div class="compare-grid">
+                <div class="compare-card old">
+                    <h3>⚙️ .NET 8 Upgrade (2024)</h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">Fully Manual Approach</p>
+                    <div class="stat"><div class="num">~15–20</div><div class="lbl">Repositories</div></div>
+                    <div class="stat"><div class="num">~140 hrs</div><div class="lbl">Total Person-Hours</div></div>
+                    <div class="stat"><div class="num">6–10 hrs</div><div class="lbl">Per Repository</div></div>
+                    <div class="stat"><div class="num">17 days</div><div class="lbl">Calendar Days (incl. QA)</div></div>
+                </div>
+                <div class="vs-badge">VS</div>
+                <div class="compare-card new">
+                    <h3>🤖 .NET 10 Upgrade (2026)</h3>
+                    <p style="color:var(--text-muted);font-size:0.85rem;margin-bottom:1rem;">Copilot Tool + Manual Fixes</p>
+                    <div class="stat"><div class="num">41</div><div class="lbl">Repositories</div></div>
+                    <div class="stat"><div class="num">~46 hrs</div><div class="lbl">Total Person-Hours</div></div>
+                    <div class="stat"><div class="num">~1.1 hrs</div><div class="lbl">Per Repository</div></div>
+                    <div class="stat"><div class="num">~8 days</div><div class="lbl">Calendar Days (so far)</div></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="section fade-in">
+            <div class="section-title"><span class="dot"></span> Per-Repository Effort Breakdown</div>
+            <div class="chart-card full">
+                <h3>Copilot Tool Time vs. Manual Effort (minutes per repo)</h3>
+                <div style="height:500px;"><canvas id="repoChart"></canvas></div>
+            </div>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="chart-grid fade-in">
+            <div class="chart-card">
+                <h3>Effort Distribution Across Repos</h3>
+                <canvas id="effortPie"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Overall Time Split: Tool vs Manual</h3>
+                <canvas id="timeSplit"></canvas>
+            </div>
+        </div>
+
+        <!-- Charts Row 3 -->
+        <div class="chart-grid fade-in">
+            <div class="chart-card">
+                <h3>.NET 8 vs .NET 10 — Total Effort (hours)</h3>
+                <canvas id="compareBar"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>Per-Repo Average Effort (hours)</h3>
+                <canvas id="perRepoCompare"></canvas>
+            </div>
+        </div>
+
+        <!-- Top 5 Heavy Repos -->
+        <div class="section fade-in">
+            <div class="section-title"><span class="dot"></span> Top Manual Effort Repos</div>
+            <div class="chart-card full">
+                <h3>Repos requiring the most manual work post-upgrade</h3>
+                <canvas id="topManual"></canvas>
+            </div>
+        </div>
+
+        <!-- Full Data Table -->
+        <div class="section fade-in">
+            <div class="section-title"><span class="dot"></span> Complete Repository Data</div>
+            <div class="table-wrap">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Repository</th>
+                            <th>Owner</th>
+                            <th>Status</th>
+                            <th>Tool Time</th>
+                            <th>Manual Effort</th>
+                            <th>Total</th>
+                            <th>Effort Level</th>
+                            <th>Vuln Fixed</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Conclusion -->
+        <div class="conclusion fade-in">
+            <h2>Key Takeaways</h2>
+            <ul>
+                <li><strong>5–7x faster per repository</strong> compared to the manual .NET 8 upgrade</li>
+                <li><strong>~67% total effort reduction</strong> while upgrading <strong>2x more repos</strong></li>
+                <li>Tool handled baseline work in <strong>~12 min/repo</strong> — devs focused only on exceptions</li>
+                <li><strong>44% of repos</strong> got bonus vulnerability fixes during the upgrade</li>
+                <li>46% of repos completed in <strong>under 30 minutes total</strong> — tool did nearly all the work</li>
+                <li>Manual effort concentrated in <strong>5 complex repos</strong> (60% of all manual hours)</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="footer">
+        CIAM .NET Upgrade Comparison Report &bull; Data from Azure DevOps &amp; DotNet UpgraderTool Tracker &bull; April 2026
+    </div>
+
+    <script>
+        // --- DATA ---
+        const repos = [
+            { name: 'CIAM.NewSignatureTool', tool: 10, manual: 0, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-AccountCleanup', tool: 9, manual: 0, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-AOL', tool: 22, manual: 44, owner: 'Agna', status: 'Completed', vuln: false },
+            { name: 'CIAM-ApproveOnline', tool: 13, manual: 15, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-BankProof', tool: 14, manual: 60, owner: 'Krishnanand', status: 'Completed', vuln: false },
+            { name: 'CIAM-CardProof', tool: 13, manual: 300, owner: 'Krishnanand', status: 'Completed', vuln: true },
+            { name: 'CIAM-Connected-Service', tool: 10, manual: 10, owner: 'Krishnanand', status: 'Completed', vuln: true },
+            { name: 'CIAM-EmailNotification-Lib', tool: 16, manual: 30, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-EventOrchestrator', tool: 12, manual: 300, owner: 'Krishnanand', status: 'Completed', vuln: true },
+            { name: 'CIAM-EventPublisher', tool: 10, manual: 120, owner: 'Vishnu', status: 'Completed', vuln: false },
+            { name: 'CIAM-FunctionCircuitBreaker', tool: 18, manual: 60, owner: 'Krishnanand', status: 'Completed', vuln: true },
+            { name: 'CIAM-IDM-Library', tool: 14, manual: 5, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-ID-Scan', tool: 13, manual: 60, owner: 'Krishnanand', status: 'Completed', vuln: true },
+            { name: 'CIAM-LaunchDarkly-Lib', tool: 9, manual: 2, owner: 'Agna', status: 'Completed', vuln: false },
+            { name: 'CIAM-Library', tool: 12, manual: 5, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-Logging', tool: 11, manual: 30, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-Login', tool: 15, manual: 180, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-Login-APIGW', tool: 16, manual: 81, owner: 'Agna', status: 'Completed', vuln: false },
+            { name: 'CIAM-ManageAccount', tool: 13, manual: 30, owner: 'Agna', status: 'Completed', vuln: false },
+            { name: 'CIAM-ManageAccount-APIGW', tool: 11, manual: 0, owner: 'Sruthija', status: 'N/A', vuln: false },
+            { name: 'CIAM-MassDisable', tool: 6, manual: 120, owner: 'Krishnanand', status: 'Completed', vuln: true },
+            { name: 'CIAM-Notification-Tool', tool: 10, manual: 10, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-NuData-Library', tool: 10, manual: 10, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-OOW', tool: 15, manual: 0, owner: 'Cody', status: 'Completed', vuln: false },
+            { name: 'CIAM-OpsCenter', tool: 15, manual: 0, owner: 'Cody', status: 'Completed', vuln: false },
+            { name: 'CIAM-Paperless', tool: 15, manual: 0, owner: 'Cody', status: 'Completed', vuln: true },
+            { name: 'CIAM-PostAuth', tool: 13, manual: 54, owner: 'Agna', status: 'Completed', vuln: false },
+            { name: 'CIAM-PostAuth-APIGW', tool: 0, manual: 0, owner: 'Cody', status: 'Completed', vuln: false },
+            { name: 'CIAM-Provenir', tool: 14, manual: 240, owner: 'Uma', status: 'Completed', vuln: false },
+            { name: 'CIAM-Reporting', tool: 10, manual: 30, owner: 'Uma', status: 'Completed', vuln: false },
+            { name: 'CIAM-Repository-Library', tool: 8, manual: 240, owner: 'Krishnanand', status: 'In Progress', vuln: true },
+            { name: 'CIAM-Retail', tool: 11, manual: 30, owner: 'Uma', status: 'Completed', vuln: false },
+            { name: 'CIAM-Retail-Webapp', tool: 15, manual: 30, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-Security-Library', tool: 8, manual: 30, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-SendInvite', tool: 10, manual: 10, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-SendOOB', tool: 9, manual: 10, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-Service', tool: 10, manual: 10, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'CIAM-SIDP', tool: 16, manual: 60, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-Tool', tool: 10, manual: 5, owner: 'Syed', status: 'Completed', vuln: false },
+            { name: 'CIAM-UserLookup', tool: 15, manual: 10, owner: 'Agna', status: 'Completed', vuln: false },
+            { name: 'CIAM-VAOL', tool: 22, manual: 20, owner: 'Sruthija', status: 'Completed', vuln: true },
+            { name: 'JWKS-Refresh', tool: 13, manual: 5, owner: 'Agna', status: 'Completed', vuln: false },
+        ];
+
+        const activeRepos = repos.filter(r => r.tool > 0 || r.manual > 0);
+
+        // Chart defaults
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.borderColor = '#334155';
+        Chart.defaults.font.family = "'Segoe UI', sans-serif";
+
+        // --- CHART 1: Stacked bar per repo ---
+        new Chart(document.getElementById('repoChart'), {
+            type: 'bar',
+            data: {
+                labels: activeRepos.map(r => r.name.replace('CIAM-', '')),
+                datasets: [
+                    {
+                        label: 'Copilot Tool Time (min)',
+                        data: activeRepos.map(r => r.tool),
+                        backgroundColor: '#7c3aed',
+                        borderRadius: 3,
+                    },
+                    {
+                        label: 'Manual Effort (min)',
+                        data: activeRepos.map(r => r.manual),
+                        backgroundColor: '#f59e0b',
+                        borderRadius: 3,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: {
+                        callbacks: {
+                            afterBody: function(ctx) {
+                                const i = ctx[0].dataIndex;
+                                const r = activeRepos[i];
+                                return `Total: ${r.tool + r.manual} min`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: { stacked: true, ticks: { maxRotation: 90, font: { size: 10 } } },
+                    y: { stacked: true, title: { display: true, text: 'Minutes' } }
+                }
+            }
+        });
+
+        // --- CHART 2: Effort Distribution Pie ---
+        const quick = activeRepos.filter(r => (r.tool + r.manual) <= 30).length;
+        const medium = activeRepos.filter(r => (r.tool + r.manual) > 30 && (r.tool + r.manual) <= 120).length;
+        const heavy = activeRepos.filter(r => (r.tool + r.manual) > 120).length;
+
+        new Chart(document.getElementById('effortPie'), {
+            type: 'doughnut',
+            data: {
+                labels: [`Quick (≤30 min): ${quick}`, `Medium (30m–2h): ${medium}`, `Heavy (>2h): ${heavy}`],
+                datasets: [{
+                    data: [quick, medium, heavy],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 0,
+                    hoverOffset: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // --- CHART 3: Time Split Doughnut ---
+        const totalTool = activeRepos.reduce((s, r) => s + r.tool, 0);
+        const totalManual = activeRepos.reduce((s, r) => s + r.manual, 0);
+
+        new Chart(document.getElementById('timeSplit'), {
+            type: 'doughnut',
+            data: {
+                labels: [
+                    `Copilot Tool: ${(totalTool / 60).toFixed(1)}h`,
+                    `Manual Fixes: ${(totalManual / 60).toFixed(1)}h`
+                ],
+                datasets: [{
+                    data: [totalTool, totalManual],
+                    backgroundColor: ['#7c3aed', '#f59e0b'],
+                    borderWidth: 0,
+                    hoverOffset: 8,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+
+        // --- CHART 4: .NET 8 vs .NET 10 Total ---
+        new Chart(document.getElementById('compareBar'), {
+            type: 'bar',
+            data: {
+                labels: ['.NET 8 (Manual)', '.NET 10 (Copilot Tool)'],
+                datasets: [{
+                    label: 'Person-Hours',
+                    data: [140, (totalTool + totalManual) / 60],
+                    backgroundColor: ['#f59e0b', '#10b981'],
+                    borderRadius: 6,
+                    barThickness: 60,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.raw.toFixed(1)} hours`
+                        }
+                    }
+                },
+                scales: {
+                    y: { title: { display: true, text: 'Hours' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // --- CHART 5: Per-repo average ---
+        new Chart(document.getElementById('perRepoCompare'), {
+            type: 'bar',
+            data: {
+                labels: ['.NET 8 (~8 hrs/repo)', '.NET 10 (~1.1 hrs/repo)'],
+                datasets: [{
+                    label: 'Hours per Repository',
+                    data: [8, (totalTool + totalManual) / 60 / activeRepos.length],
+                    backgroundColor: ['#f59e0b', '#10b981'],
+                    borderRadius: 6,
+                    barThickness: 60,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.raw.toFixed(1)} hours/repo`
+                        }
+                    }
+                },
+                scales: {
+                    y: { title: { display: true, text: 'Hours' }, beginAtZero: true }
+                }
+            }
+        });
+
+        // --- CHART 6: Top Manual Effort ---
+        const topManualRepos = [...activeRepos].sort((a, b) => b.manual - a.manual).slice(0, 8);
+        new Chart(document.getElementById('topManual'), {
+            type: 'bar',
+            data: {
+                labels: topManualRepos.map(r => r.name.replace('CIAM-', '')),
+                datasets: [
+                    {
+                        label: 'Tool Time (min)',
+                        data: topManualRepos.map(r => r.tool),
+                        backgroundColor: '#7c3aed',
+                        borderRadius: 3,
+                    },
+                    {
+                        label: 'Manual Effort (min)',
+                        data: topManualRepos.map(r => r.manual),
+                        backgroundColor: '#ef4444',
+                        borderRadius: 3,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                indexAxis: 'y',
+                plugins: { legend: { position: 'top' } },
+                scales: {
+                    x: { stacked: true, title: { display: true, text: 'Minutes' } },
+                    y: { stacked: true }
+                }
+            }
+        });
+
+        // --- DATA TABLE ---
+        const tbody = document.querySelector('#dataTable tbody');
+        repos.forEach((r, i) => {
+            const total = r.tool + r.manual;
+            let level, levelClass;
+            if (total === 0) { level = '—'; levelClass = ''; }
+            else if (total <= 30) { level = 'Quick'; levelClass = 'green'; }
+            else if (total <= 120) { level = 'Medium'; levelClass = 'yellow'; }
+            else { level = 'Heavy'; levelClass = 'red'; }
+
+            let statusClass = 'green';
+            if (r.status === 'In Progress') statusClass = 'blue';
+            if (r.status === 'N/A') statusClass = 'yellow';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${i + 1}</td>
+                <td><strong>${r.name}</strong></td>
+                <td>${r.owner}</td>
+                <td><span class="tag ${statusClass}">${r.status}</span></td>
+                <td>${r.tool > 0 ? r.tool + ' min' : '—'}</td>
+                <td>${r.manual > 0 ? (r.manual >= 60 ? (r.manual / 60).toFixed(1) + ' hrs' : r.manual + ' min') : '—'}</td>
+                <td>${total > 0 ? (total >= 60 ? (total / 60).toFixed(1) + ' hrs' : total + ' min') : '—'}</td>
+                <td>${levelClass ? `<span class="tag ${levelClass}">${level}</span>` : '—'}</td>
+                <td>${r.vuln ? '<span class="tag green">Yes</span>' : '—'}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        // --- Scroll animations ---
+        const observer = new IntersectionObserver(entries => {
+            entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+        }, { threshold: 0.1 });
+        document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+    </script>
+</body>
+</html>
